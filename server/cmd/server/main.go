@@ -17,33 +17,17 @@ import (
 	"github.com/tzachfi/kumo/server/internal/prompthub/provider"
 )
 
-const sampleJourneyJSON = `{
-  "title": "10k under 60 mins",
-  "domain": "FITNESS",
-  "state": "INITIALIZING",
-  "deadline": "2026-09-01T00:00:00Z",
-  "config": {"avatar_tier": 1, "theme_palette": "neon_runner"},
-  "milestones": [
-    {
-      "title": "Endurance Base Building",
-      "order": 0,
-      "state": "ACTIVE",
-      "tasks": [
-        {
-          "title": "5km Interval Run",
-          "scheduled_at": "2026-07-01T07:00:00Z",
-          "state": "PENDING",
-          "details": {"target_pace": "5:45", "distance_meters": 5000}
-        }
-      ]
-    }
-  ]
-}`
-
 func main() {
-	fmt.Println("kumo server starting (phase 2: hub → assemble → validate)")
+	fmt.Println("kumo server starting (phase 2)")
 
-	hub, err := prompthub.NewHub(provider.NewMockProvider(sampleJourneyJSON))
+	prov, err := provider.NewFromEnv()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to create provider: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("using provider: %s\n", providerKind(prov))
+
+	hub, err := prompthub.NewHub(prov)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to build prompt hub: %v\n", err)
 		os.Exit(1)
@@ -60,16 +44,20 @@ func main() {
 	ctx := context.Background()
 
 	// Step 1: Prompt Hub — template, LLM call, JSON parse (LLM-shaped output).
+	fmt.Println("generating journey (prompt → LLM → parse)...")
 	raw, err := hub.GenerateJourney(ctx, req)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to generate journey: %v\n", err)
 		os.Exit(1)
 	}
+	fmt.Printf("journey parsed: %q\n", raw.Title)
 
 	// Step 2: Assembly — inject system-owned IDs and foreign keys.
+	fmt.Println("assembling system fields (IDs, user_id, created_at)...")
 	assembled := journey.Assemble(raw, req)
 
 	// Step 3: Validation — reject invalid enum values before persistence.
+	fmt.Println("validating enums...")
 	if err := journey.Validate(assembled); err != nil {
 		fmt.Fprintf(os.Stderr, "journey validation failed: %v\n", err)
 		os.Exit(1)
@@ -82,4 +70,16 @@ func main() {
 	}
 
 	fmt.Printf("generated journey:\n%s\n", pretty)
+	fmt.Println("done")
+}
+
+func providerKind(p provider.Provider) string {
+	switch p.(type) {
+	case *provider.MockProvider:
+		return "mock"
+	case *provider.OpenAICompatProvider:
+		return "llm"
+	default:
+		return "unknown"
+	}
 }

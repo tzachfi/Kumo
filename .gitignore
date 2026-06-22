@@ -1,0 +1,47 @@
+# --- Secrets (never commit real keys) ---
+.env
+.env.local
+.env.*.local
+.envrc
+*.pem
+*.key
+credentials.json
+
+# Keep env templates tracked
+!.env.example
+!**/.env.example
+!.envrc.example
+!**/.envrc.example
+
+# --- Go ---
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/vendor/
+
+# --- Frontend (client) ---
+node_modules/
+dist/
+build/
+.next/
+.nuxt/
+.cache/
+*.tsbuildinfo
+
+# --- IDE / editor ---
+.idea/
+*.swp
+*.swo
+*~
+.vscode/launch.json
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Cursor (local-only config that may reference secrets) ---
+.cursor/mcp.json
