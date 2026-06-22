@@ -1,7 +1,7 @@
 // Package provider abstracts the third-party LLM infrastructure behind a single
 // interface so the Prompt Hub depends only on a contract, never on a concrete
-// vendor (Gemini, DeepSeek, etc.). Tiered routing and real HTTP clients are
-// added in later phases.
+// vendor. Implementations include MockProvider and OpenAICompatProvider; vendors
+// with non-OpenAI APIs get their own Provider type. Tiered routing comes later.
 package provider
 
 import "context"
