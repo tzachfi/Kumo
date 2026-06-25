@@ -9,9 +9,8 @@ import (
 
 func validJourney() *domain.Journey {
 	return &domain.Journey{
-		Title:  "10k under 60 mins",
-		Domain: domain.Fitness,
-		State:  domain.Initializing,
+		Title: "10k under 60 mins",
+		State: domain.Initializing,
 		Milestones: []domain.Milestone{
 			{
 				Title: "Base Building",
@@ -42,15 +41,6 @@ func TestValidate_invalidStates(t *testing.T) {
 		journey *domain.Journey
 		wantSub string
 	}{
-		{
-			name: "invalid domain",
-			journey: func() *domain.Journey {
-				j := validJourney()
-				j.Domain = "BOGUS"
-				return j
-			}(),
-			wantSub: "invalid domain",
-		},
 		{
 			name: "invalid journey state",
 			journey: func() *domain.Journey {

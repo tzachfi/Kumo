@@ -15,7 +15,6 @@ import (
 
 const validJourneyJSON = `{
   "title": "10k under 60 mins",
-  "domain": "FITNESS",
   "state": "INITIALIZING",
   "deadline": "2026-09-01T00:00:00Z",
   "config": {"avatar_tier": 1, "theme_palette": "neon_runner"},
@@ -40,7 +39,6 @@ func newTestContext() domain.JourneyContext {
 	return domain.JourneyContext{
 		UserID:      uuid.New(),
 		Ambition:    "run a 10k under 60 minutes",
-		Domain:      domain.Fitness,
 		Deadline:    time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC),
 		Constraints: []string{"only train 3 days/week"},
 	}
@@ -59,9 +57,6 @@ func TestGenerateJourney_Success(t *testing.T) {
 
 	if journey.Title != "10k under 60 mins" {
 		t.Errorf("Title = %q, want %q", journey.Title, "10k under 60 mins")
-	}
-	if journey.Domain != domain.Fitness {
-		t.Errorf("Domain = %q, want %q", journey.Domain, domain.Fitness)
 	}
 	if got := len(journey.Milestones); got != 1 {
 		t.Fatalf("len(Milestones) = %d, want 1", got)
