@@ -16,7 +16,6 @@ const (
 // mockSampleJourneyJSON is canned LLM output for offline mock mode (no network).
 const mockSampleJourneyJSON = `{
   "title": "10k under 60 mins",
-  "domain": "FITNESS",
   "state": "INITIALIZING",
   "deadline": "2026-09-01T00:00:00Z",
   "config": {"avatar_tier": 1, "theme_palette": "neon_runner"},

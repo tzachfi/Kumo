@@ -13,9 +13,6 @@ func Validate(j *domain.Journey) error {
 	if j == nil {
 		return fmt.Errorf("journey: nil journey")
 	}
-	if !j.Domain.Valid() {
-		return fmt.Errorf("journey: invalid domain %q", j.Domain)
-	}
 	if !j.State.Valid() {
 		return fmt.Errorf("journey: invalid state %q", j.State)
 	}

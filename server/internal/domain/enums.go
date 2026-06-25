@@ -1,26 +1,5 @@
 package domain
 
-// AmbitionDomain defines the category of the goal. The application stays
-// agnostic to what each domain means; it only steps through the tree.
-type AmbitionDomain string
-
-const (
-	Fitness   AmbitionDomain = "FITNESS"
-	Technical AmbitionDomain = "TECHNICAL"
-	Creative  AmbitionDomain = "CREATIVE"
-)
-
-// Valid reports whether the value is a recognized AmbitionDomain. String-typed
-// enums are not constrained at compile time, so callers validate at boundaries.
-func (d AmbitionDomain) Valid() bool {
-	switch d {
-	case Fitness, Technical, Creative:
-		return true
-	default:
-		return false
-	}
-}
-
 // JourneyState represents where the user stands in their overall timeline.
 type JourneyState string
 
