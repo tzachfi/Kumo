@@ -6,15 +6,20 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/tzachfi/kumo/server/internal/api"
+	"github.com/tzachfi/kumo/server/internal/domain"
 	"github.com/tzachfi/kumo/server/internal/generate"
+	"github.com/tzachfi/kumo/server/internal/journey"
 	"github.com/tzachfi/kumo/server/internal/sdui"
 	"github.com/tzachfi/kumo/server/internal/store"
 )
 
 // JourneyHandler serves journey SDUI endpoints.
 type JourneyHandler struct {
-	Store store.JourneyStore
+	Store         store.JourneyStore
+	DefaultUserID uuid.UUID
 }
 
 type generateRequest struct {
@@ -26,11 +31,20 @@ type themeResult struct {
 	heroKeyword string
 }
 
+type journeyConfig struct {
+	SeedColor   string `json:"seed_color"`
+	HeroKeyword string `json:"hero_keyword"`
+}
+
+type doneEvent struct {
+	ID string `json:"id"`
+}
+
 // Get handles GET /api/journey/{id}.
 func (h *JourneyHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
-	rec, err := h.Store.GetJourneyByID(id)
+	rec, err := h.Store.GetJourneyByID(r.Context(), id)
 
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
@@ -72,6 +86,7 @@ func (h *JourneyHandler) Generate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	topic := req.Topic
+	var journeyID uuid.UUID
 
 	themeCh := make(chan themeResult, 1)
 	contentCh := make(chan []store.MilestoneRecord, 1)
@@ -94,6 +109,32 @@ func (h *JourneyHandler) Generate(w http.ResponseWriter, r *http.Request) {
 		case <-r.Context().Done():
 			return
 		case theme := <-themeCh:
+			config, err := json.Marshal(journeyConfig{
+				SeedColor:   theme.seedColor,
+				HeroKeyword: theme.heroKeyword,
+			})
+
+			if err != nil {
+				return
+			}
+
+			j := &domain.Journey{
+				ID:       uuid.New(),
+				Title:    topic,
+				State:    domain.Initializing,
+				UserID:   h.DefaultUserID,
+				Deadline: time.Now().UTC().Add(90 * 24 * time.Hour),
+				Config:   config,
+			}
+
+			err = h.Store.CreateJourney(r.Context(), j)
+
+			if err != nil {
+				return
+			}
+
+			journeyID = j.ID
+
 			screen, err := sdui.BuildInitScreen(topic, theme.seedColor, theme.heroKeyword)
 			if err != nil {
 				return
@@ -103,12 +144,55 @@ func (h *JourneyHandler) Generate(w http.ResponseWriter, r *http.Request) {
 			}
 			pending--
 		case milestones := <-contentCh:
+			var dm = make([]domain.Milestone, 0, len(milestones))
+
+			for i, rec := range milestones {
+				state := domain.MilestoneLocked
+				if i == 0 {
+					state = domain.MilestoneActive
+				}
+				dm = append(dm, domain.Milestone{
+					Title: rec.Title,
+					Order: rec.Order,
+					State: state,
+				})
+			}
+
+			j := &domain.Journey{
+				ID:         journeyID,
+				Milestones: dm,
+			}
+
+			req := domain.JourneyContext{
+				UserID:   h.DefaultUserID,
+				Ambition: topic,
+				Deadline: time.Now().UTC().Add(90 * 24 * time.Hour),
+			}
+
+			journey.Assemble(j, req)
+
+			err = journey.Validate(j)
+
+			if err != nil {
+				return
+			}
+
+			err = h.Store.SaveMilestones(r.Context(), journeyID, j.Milestones, domain.Active)
+
+			if err != nil {
+				return
+			}
+
 			screenUpdate := sdui.BuildContentUpdate(milestones)
 			if err := api.WriteSSE(w, flusher, "update", screenUpdate); err != nil {
 				return
 			}
 			pending--
 		}
+	}
+
+	if err := api.WriteSSE(w, flusher, "done", doneEvent{ID: journeyID.String()}); err != nil {
+		return
 	}
 }
 
